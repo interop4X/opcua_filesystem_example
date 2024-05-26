@@ -38,6 +38,7 @@ class OPCUAFileSystemServer:
         self.namespace_idx = None
         self.fileRoot = None
         self.loop = asyncio.get_event_loop()
+        self.open_files = {}  # Dictionary to keep track of open file handles
 
     async def init_server(self):
         await self.server.init()
@@ -70,11 +71,17 @@ class OPCUAFileSystemServer:
                 item_path = os.path.join(path, item)
                 await self.add_filesystem_nodes(item_path, folder_node)
         elif os.path.isfile(path):
-            await instantiate(parent=parent_node, node_type=self.file_type, bname=ua.QualifiedName(os.path.basename(path), self.namespace_idx), dname=ua.LocalizedText(os.path.basename(path), ""))
-            
+            await self.add_file_node(path,parent_node)
+
+
     async def add_file_node(self, path, parent_node):
-        if os.path.isfile(path):
-            await instantiate(parent=parent_node, node_type=self.file_type, bname=ua.QualifiedName(os.path.basename(path), self.namespace_idx), dname=ua.LocalizedText(os.path.basename(path), ""))
+        instantiate_result = await instantiate(parent=parent_node, node_type=self.file_type, bname=ua.QualifiedName(os.path.basename(path), self.namespace_idx), dname=ua.LocalizedText(os.path.basename(path), ""))
+        file_node = instantiate_result[0]
+        await self.link_method_to_node(file_node, "Open", self.open_file)
+        await self.link_method_to_node(file_node, "Close", self.close_file)
+        await self.link_method_to_node(file_node, "Read", self.read_file)
+        await self.link_method_to_node(file_node, "Write", self.write_file)
+        await self.link_method_to_node(file_node, "SetPosition", self.set_position)
 
     async def link_method_to_node(self, node, method_name, method):
         method_node = await node.get_child(f"0:{method_name}")
@@ -163,6 +170,84 @@ class OPCUAFileSystemServer:
             current_node = await current_node.get_parent()
         path_elements.reverse()
         return os.path.join(*path_elements)
+
+    def convert_mode(self, mode):
+        if mode == 1:
+            return "rb"
+        elif mode == 2:
+            return "wb"
+        elif mode == 3:
+            return "ab"
+        elif mode == 5:
+            return "r+b"
+        elif mode == 6:
+            return "w+b"
+        elif mode == 7:
+            return "a+b"
+        else:
+            raise ValueError("Invalid mode")
+
+    @uamethod
+    async def open_file(self, parent, mode):
+        full_path = await self.get_full_path_from_node(parent)
+        try:
+            python_mode = self.convert_mode(mode)
+            file_handle = open(full_path, python_mode)
+            self.open_files[parent] = file_handle
+            return ua.Variant(0, ua.VariantType.UInt32)
+        except Exception as e:
+            print(f"Error opening file: {e}")
+            return False
+
+    @uamethod
+    async def close_file(self, parent,file_handle):
+        try:
+            if parent in self.open_files:
+                self.open_files[parent].close()
+                del self.open_files[parent]
+            return
+        except Exception as e:
+            print(f"Error closing file: {e}")
+            return False
+
+    @uamethod
+    async def read_file(self, parent, FileHandle, length):
+        try:
+            if parent in self.open_files:
+                data = self.open_files[parent].read(length)
+                print(data)
+                return ua.Variant(data, ua.VariantType.ByteString)
+            else:
+                return False
+        except Exception as e:
+            print(f"Error reading file: {e}")
+            return False
+
+    @uamethod
+    async def write_file(self, parent, FileHandle,data):
+        print("write file")
+        try:
+            if parent in self.open_files:
+                self.open_files[parent].write(data)
+                return
+            else:
+                print(f"File not open!")
+                return
+        except Exception as e:
+            print(f"Error writing file: {e}")
+            return
+
+    @uamethod
+    async def set_position(self, parent, FileHandle, position):
+        try:
+            if parent in self.open_files:
+                self.open_files[parent].seek(position)
+                return [ua.Variant(True, ua.VariantType.Boolean)]
+            else:
+                return [ua.Variant(False, ua.VariantType.Boolean)]
+        except Exception as e:
+            print(f"Error setting position: {e}")
+            return [ua.Variant(False, ua.VariantType.Boolean)]
 
 
 async def main():
