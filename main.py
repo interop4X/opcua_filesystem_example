@@ -2,7 +2,6 @@ import asyncio
 import os
 from asyncua import ua, uamethod, Server
 from asyncua.common.instantiate_util import instantiate
-from asyncua.common.node import Node
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -63,13 +62,23 @@ class OPCUAFileSystemServer:
         if os.path.isdir(path):
             instantiate_result = await instantiate(parent=parent_node, node_type=self.folder_type, bname=ua.QualifiedName(os.path.basename(path), self.namespace_idx), instantiate_optional=False, dname=ua.LocalizedText(os.path.basename(path), ""))
             folder_node = instantiate_result[0]
-            create_dir_node = await folder_node.get_child("0:CreateDirectory")
-            self.server.link_method(create_dir_node, self.create_directory)
+            await self.link_method_to_node(folder_node, "CreateDirectory", self.create_directory)
+            await self.link_method_to_node(folder_node, "CreateFile", self.create_file)
+            await self.link_method_to_node(folder_node, "Delete", self.delete_node)
+            await self.link_method_to_node(folder_node, "MoveOrCopy", self.move_or_copy)
             for item in os.listdir(path):
                 item_path = os.path.join(path, item)
                 await self.add_filesystem_nodes(item_path, folder_node)
         elif os.path.isfile(path):
             await instantiate(parent=parent_node, node_type=self.file_type, bname=ua.QualifiedName(os.path.basename(path), self.namespace_idx), dname=ua.LocalizedText(os.path.basename(path), ""))
+            
+    async def add_file_node(self, path, parent_node):
+        if os.path.isfile(path):
+            await instantiate(parent=parent_node, node_type=self.file_type, bname=ua.QualifiedName(os.path.basename(path), self.namespace_idx), dname=ua.LocalizedText(os.path.basename(path), ""))
+
+    async def link_method_to_node(self, node, method_name, method):
+        method_node = await node.get_child(f"0:{method_name}")
+        self.server.link_method(method_node, method)
 
     async def update_filesystem(self, path, change_type):
         print(f"File system change detected: {path} - {change_type}")
@@ -80,15 +89,6 @@ class OPCUAFileSystemServer:
             while True:
                 await asyncio.sleep(1)
 
-    async def add_method(self, parent, name, func, input_args, output_args):
-        method = await parent.add_method(
-            ua.NodeId(f"{name}", self.namespace_idx),
-            ua.QualifiedName(name, self.namespace_idx),
-            func,
-            input_args,
-            output_args
-        )
-
     @uamethod
     async def create_directory(self, parent, path):
         print(path, parent)
@@ -98,44 +98,61 @@ class OPCUAFileSystemServer:
             os.makedirs(full_path)
             parent_node = self.server.get_node(parent)
             await self.add_filesystem_nodes(full_path, parent_node)
-            return True
+            return [ua.Variant(True, ua.VariantType.Boolean)]
         except Exception as e:
             print(f"Error creating directory: {e}")
-            return False
+            return [ua.Variant(False, ua.VariantType.Boolean)]
 
-    async def create_file(self, parent, path):
+    @uamethod
+    async def create_file(self, parent, path, requestFileOpen):
+        print(path, parent)
+        parent_dir = await self.get_full_path_from_node(parent)
+        full_path = os.path.join(parent_dir, path)
         try:
-            with open(path, 'w') as f:
+            with open(full_path, 'w') as f:
                 f.write('')
-            return True
+            parent_node = self.server.get_node(parent)
+            await self.add_file_node(full_path, parent_node)
+            return [ua.Variant(True, ua.VariantType.Boolean), ua.Variant(0, ua.VariantType.UInt32)]
         except Exception as e:
             print(f"Error creating file: {e}")
-            return False
+            return [ua.Variant(False, ua.VariantType.Boolean)]
 
+    @uamethod
     async def delete_node(self, parent, path):
+        print(path, parent)
+        parent_dir = await self.get_full_path_from_node(parent)
+        full_path = os.path.join(parent_dir, path)
         try:
-            if os.path.isdir(path):
-                os.rmdir(path)
-            elif os.path.isfile(path):
-                os.remove(path)
-            return True
+            if os.path.isdir(full_path):
+                os.rmdir(full_path)
+            elif os.path.isfile(full_path):
+                os.remove(full_path)
+            return [ua.Variant(True, ua.VariantType.Boolean)]
         except Exception as e:
             print(f"Error deleting node: {e}")
-            return False
+            return [ua.Variant(False, ua.VariantType.Boolean)]
 
+    @uamethod
     async def move_or_copy(self, parent, src_path, dest_path, is_move):
+        print(src_path, dest_path, parent)
+        parent_dir = await self.get_full_path_from_node(parent)
+        full_src_path = os.path.join(parent_dir, src_path)
+        full_dest_path = os.path.join(parent_dir, dest_path)
         try:
             if is_move:
-                os.rename(src_path, dest_path)
+                os.rename(full_src_path, full_dest_path)
             else:
-                if os.path.isdir(src_path):
-                    os.system(f"cp -r {src_path} {dest_path}")
+                if os.path.isdir(full_src_path):
+                    os.system(f"cp -r {full_src_path} {full_dest_path}")
                 else:
-                    os.system(f"cp {src_path} {dest_path}")
-            return True
+                    os.system(f"cp {full_src_path} {full_dest_path}")
+            parent_node = self.server.get_node(parent)
+            await self.add_filesystem_nodes(full_dest_path, parent_node)
+            return [ua.Variant(True, ua.VariantType.Boolean)]
         except Exception as e:
             print(f"Error moving or copying node: {e}")
-            return False
+            return [ua.Variant(False, ua.VariantType.Boolean)]
 
     async def get_full_path_from_node(self, node_id):
         path_elements = []
@@ -146,7 +163,6 @@ class OPCUAFileSystemServer:
             current_node = await current_node.get_parent()
         path_elements.reverse()
         return os.path.join(*path_elements)
-
 
 
 async def main():
