@@ -70,7 +70,7 @@ class FileSystem:
         try:
             with open(full_path, 'w') as f:
                 f.write('')
-            files = Files(self.server, self.namespace_idx)
+            files = Files(self.server, self.namespace_idx, self.root_node)
             await files.add_file_node(full_path, self.server.get_node(parent))
             return [ua.Variant(True, ua.VariantType.Boolean), ua.Variant(0, ua.VariantType.UInt32)]
         except Exception as e:

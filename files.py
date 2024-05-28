@@ -11,10 +11,14 @@ class Files:
         self.root_node = root_node
 
     async def add_file_node(self, path, parent_node):
+        print(parent_node)
         filetype_node = await self.server.nodes.base_object_type.get_child([
                                                                   "0:FileType"])
         result = await instantiate(parent=parent_node, idx=self.namespace_idx, node_type=filetype_node, bname=ua.QualifiedName(os.path.basename(path), self.namespace_idx), dname=ua.LocalizedText(os.path.basename(path), ""))
         file_node = result[0]
+        # Initialisierung der Dateigröße
+        self.file_size_node = await file_node.get_child(f"0:Size")
+        await self.file_size_node.write_value(ua.UInt64(os.path.getsize(path)))
         await self.link_methods_to_file(file_node)
 
     async def link_methods_to_file(self, file_node):
@@ -39,6 +43,7 @@ class Files:
             python_mode = self.convert_mode(mode)
             file_handle = open(full_path, python_mode)
             self.open_files[parent] = file_handle
+            await self.file_size_node.write_value(ua.UInt64(os.path.getsize(full_path)))
             return ua.Variant(0, ua.VariantType.UInt32)
         except Exception as e:
             print(f"Fehler beim Öffnen der Datei: {e}")
