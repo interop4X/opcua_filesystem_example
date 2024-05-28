@@ -1,15 +1,19 @@
 from asyncua import ua, uamethod
 from asyncua.common.instantiate_util import instantiate
+import os
 
 
 class Files:
-    def __init__(self, server, namespace_idx):
+    def __init__(self, server, namespace_idx,root_node):
         self.server = server
         self.namespace_idx = namespace_idx
         self.open_files = {}
+        self.root_node = root_node
 
     async def add_file_node(self, path, parent_node):
-        file_node = await instantiate(parent=parent_node, node_type=self.server.nodes.base_object_type.get_child(["0:FileType"]), bname=ua.QualifiedName(os.path.basename(path), self.namespace_idx), dname=ua.LocalizedText(os.path.basename(path), ""))
+        filetype_node = await self.server.nodes.base_object_type.get_child([
+                                                                  "0:FileType"])
+        result = await instantiate(parent=parent_node, idx=self.namespace_idx, node_type=filetype_node, bname=ua.QualifiedName(os.path.basename(path), self.namespace_idx), dname=ua.LocalizedText(os.path.basename(path), ""))
         file_node = result[0]
         await self.link_methods_to_file(file_node)
 
@@ -82,9 +86,10 @@ class Files:
             return [ua.Variant(False, ua.VariantType.Boolean)]
 
     async def get_full_path_from_node(self, node_id):
+        print(node_id)
         path_elements = []
         current_node = self.server.get_node(node_id)
-        while current_node.nodeid != self.server.nodes.base_object_type.nodeid:
+        while current_node.nodeid != self.root_node.nodeid:
             browse_name = await current_node.read_browse_name()
             path_elements.append(browse_name.Name)
             current_node = await current_node.get_parent()
