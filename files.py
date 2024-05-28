@@ -1,6 +1,5 @@
 from asyncua import ua, uamethod
 from asyncua.common.instantiate_util import instantiate
-import os
 
 
 class Files:
@@ -8,13 +7,10 @@ class Files:
         self.server = server
         self.namespace_idx = namespace_idx
         self.open_files = {}
-        self.file_sizes = {}  # Dictionary zur Verwaltung der Dateigrößen
 
     async def add_file_node(self, path, parent_node):
-        result = await instantiate(parent=parent_node, node_type=self.server.nodes.base_object_type.get_child(["0:FileType"]), bname=ua.QualifiedName(os.path.basename(path), self.namespace_idx), dname=ua.LocalizedText(os.path.basename(path), ""))
+        file_node = await instantiate(parent=parent_node, node_type=self.server.nodes.base_object_type.get_child(["0:FileType"]), bname=ua.QualifiedName(os.path.basename(path), self.namespace_idx), dname=ua.LocalizedText(os.path.basename(path), ""))
         file_node = result[0]
-        self.file_sizes[file_node.nodeid] = os.path.getsize(
-            path)  # Initialisierung der Dateigröße
         await self.link_methods_to_file(file_node)
 
     async def link_methods_to_file(self, file_node):
@@ -70,8 +66,6 @@ class Files:
         try:
             if parent in self.open_files:
                 self.open_files[parent].write(data)
-                # Aktualisierung der Dateigröße
-                self.file_sizes[parent.nodeid] += len(data)
         except Exception as e:
             print(f"Fehler beim Schreiben der Datei: {e}")
 
