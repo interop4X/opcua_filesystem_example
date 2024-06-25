@@ -1,55 +1,40 @@
 # OPC UA Filesystem Example
 
-## Projektbeschreieung
+## Project Description
 
-Dieses Projekt bietet ein beispiel fur das Abbilderung eines Dateisystems in OPC UA. Es her a wie Filesysteme in Maschinensteuergen oder Flachglas Companion Specificationen verwendet werden.
-
-### Installation
+This project provides an example of mapping a filesystem according to [OPC 10000-20 File Transfer](https://reference.opcfoundation.org/Core/Part20/v105/docs/) in OPC UA. It demonstrates how filesystems can be used in machine controls or flat glass companion specifications.
 
 
-## Repository klonen
+## Open Issues -
+ Error messages are not yet represented in the status code
+- fileHandle is not session-bound
 
-    git clone https://github.com/interop4X/opcua_filesystem_example.git
+## Installation
 
-## Requirements installieren
+1. **Clone the repository**
 
+ ~
+  git clone https://github.com/interop4X/opcua_filesystem_example.git
 
-## Verw ern
-#
-# Starten der Muster	
+2. **Install dependencies***
 
-    python main.py
+ cd opcua_filesystem_example
 
-## Beispiel for Wider class auf so check out this option both classical and retroactive implementation inspired codems and tools that particular made the system a requirement of some known repositories and methods used to develop the project.
+ pip install -r requirements.txt
 
+## Usage
 
-## Product default starts with main.py
+* Start the main application**
 
+  python main.py
 
-    python main.py
-
-## By using this class for wider class both check out this option both classical and retroactive implementation inspired codems and tools that particular made the system a requirement of some known repositories and methods used to develop the project.
-
-
-
-## Samples, wider, classic both check out this option both classical and retroactive implementation inspired codems and tools that particular made the system a requirement of some known repositories and methods used to develop the project.
-
-
-## Product default starts with main.py
-
-
-    python main.py
-
-## By using this class for wider class both check out this option both classical and retroactive implementation inspired codems and tools that particular made the system a requirement of some known repositories and methods used to develop the project.
-
-## Contributing
- 
-    Forken Sie das repository, createn Sie a special branch ('git checkout -b feature/fooBar')
-    Pushen Sie the branch ('git push origin feature/fogBar/gdeprlofbarm-readme')
-    Create a Pull Request
-
+This starts the OPC UA server application that maps the filesystem. You can now connect to the OPC UA server using a client (e.g., UAExpert).
+URL: `opc.tcp://0.0.0.0:48400`
+~
 ## License
 
-  License is default onder MIT.  This project is refred under the MIT.  
-# More Samples
- Open UID such that this option both classical and retroactive implementation inspired codems and tools that particular made the system a requirement of some known repositories and methods used to develop the project.
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/interop4X/opcua_filesystem_example/blob/main/LICENSE)  file for more details.
+
+## Disclaimer
+
+This is a prototype and not a finished product. Use it at your own risk. The maintainers and contributors are not responsible for any damages or losses caused by the use of this software.
