@@ -1,7 +1,7 @@
 import os
 from asyncua import ua, uamethod
 from asyncua.common.instantiate_util import instantiate
-from files import Files
+from file import File
 
 
 class FileSystem:
@@ -25,8 +25,8 @@ class FileSystem:
                 item_path = os.path.join(path, item)
                 await self.add_filesystem_nodes(item_path, folder_node)
         elif os.path.isfile(path):
-            files = Files(self.server, self.namespace_idx, self.root_node)
-            await files.add_file_node(path, parent_node)
+            file = File(self.server, self.namespace_idx, self.root_node)
+            await file.add_file_node(path, parent_node)
 
     async def link_methods_to_folder(self, folder_node):
         await self.link_method_to_node(folder_node, "CreateDirectory", self.create_directory)
@@ -70,8 +70,8 @@ class FileSystem:
         try:
             with open(full_path, 'w') as f:
                 f.write('')
-            files = Files(self.server, self.namespace_idx, self.root_node)
-            await files.add_file_node(full_path, self.server.get_node(parent))
+            file = File(self.server, self.namespace_idx, self.root_node)
+            await file.add_file_node(full_path, self.server.get_node(parent))
             return [ua.Variant(True, ua.VariantType.Boolean), ua.Variant(0, ua.VariantType.UInt32)]
         except Exception as e:
             print(f"Fehler beim Erstellen der Datei: {e}")

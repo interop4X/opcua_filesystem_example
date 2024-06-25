@@ -15,14 +15,14 @@ This project provides an example of mapping a filesystem according to [OPC 10000
 
   `git clone https://github.com/interop4X/opcua_filesystem_example.git`
 
-2. **Install dependencies***
+2. **Install dependencies**
 
  - `cd opcua_filesystem_example`
  - `pip install -r requirements.txt` 
 
 ## Usage
 
-** Start the main application**
+** Start the main application **
 
   python main.py
 
